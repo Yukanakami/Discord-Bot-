@@ -38,5 +38,5 @@ A Discord bot that allows users to track their work hours, breaks, and generate 
 
 1. Clone or download this repository
 2. Install the required dependencies:
-   ```bas
+   ```bash
    pip install discord.py openpyxl
