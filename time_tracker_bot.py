@@ -1,11 +1,4 @@
-import discord 
-from discord.ext import commands
-import asyncio
-import datetime
-import json
-import os
-from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill
+
 
 
 """
