@@ -158,8 +158,70 @@ async def status_command(ctx):
 
     await ctx.send(status_message, ephemeral=True)
 
+@bot.command(name='report')
+async def report_command(ctx):
+    if not any(data['clock_in'] is not None for data in time_data.values()):
+        await ctx.send("No time data available to generate a report.", ephemeral=True)
+        return
+        
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Time Tracking Report"
 
+    headers = ["User", "Clock In", "Clock Out", "Break Start", "Break End", "Total Break Time", "Total Work Time"]
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=header)
+        cell.font = Font(bold=True)
+        cell.fill = PatternFill(start_color="DDDDDD", end_color="DDDDDD", fill_type="solid")
 
+    row = 2
+    for user_id, data in time_data.items():
+        if data['clock_in'] is None:
+            continue
+
+        clock_in = datetime.datetime.fromisoformat(data['clock_in'])
+        clock_out = datetime.datetime.fromisoformat(data['clock_out']) if data['clock_out'] else None
+
+        total_break_time = datetime.timedelta(0)
+        for break_entry in data['breaks']:
+            if break_entry['end']:
+                start = datetime.datetime.fromisoformat(break_entry['start'])
+                end = datetime.datetime.fromisoformat(break_entry['end'])
+                total_break_time += (end - start)
+
+        if clock_out:
+            total_work_time = (clock_out - clock_in) - total_break_time
+        else:
+            total_work_time = "Still working"
+
+        break_starts = [datetime.datetime.fromisoformat(b['start']).strftime('%H:%M') for b in data['breaks']]
+        break_ends = [datetime.datetime.fromisoformat(b['end']).strftime('%H:%M') if b['end'] else "Ongoing" for b in data['breaks']]
+
+        ws.cell(row=row, column=1, value=data['name'])
+        ws.cell(row=row, column=2, value=clock_in.strftime('%Y-%m-%d %H:%M'))
+        ws.cell(row=row, column=3, value=clock_out.strftime('%Y-%m-%d %H:%M') if clock_out else "Not clocked out")
+        ws.cell(row=row, column=4, value=", ".join(break_starts) if break_starts else "No breaks")
+        ws.cell(row=row, column=5, value=", ".join(break_ends) if break_ends else "No breaks")
+        ws.cell(row=row, column=6, value=str(total_break_time))
+        ws.cell(row=row, column=7, value=str(total_work_time) if isinstance(total_work_time, datetime.timedelta) else total_work_time)
+
+        row += 1
+
+    for column in ws.columns:
+        max_length = 0
+        column_letter = column[0].column_letter
+        for cell in column:
+            if cell.value:
+                max_length = max(max_length, len(str(cell.value)))
+        adjusted_width = (max_length + 2)
+        ws.column_dimensions[column_letter].width = adjusted_width
+
+    filename = f"time_report_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    wb.save(filename)
+
+    await ctx.send("Here's the time tracking report:", file=discord.File(filename))
+
+    os.remove(filename)
 
 @bot.command(name="reset")
 async def reset_command(ctx):
