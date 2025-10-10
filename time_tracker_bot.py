@@ -223,3 +223,29 @@ async def report_command(ctx):
 
     os.remove(filename)
 
+
+@bot.command(name="reset")
+async def reset_command(ctx):
+    if str(ctx.author.id) not in ALLOWED_RESET_USERS:
+        await ctx.send("You don't have permission to use this command.", ephemeral=True)
+        return
+    
+    def check(m):
+        return m.author == ctx.author and m.content.lower() == 'confirm'
+    
+    await ctx.send("Are you sure you want to reset all time data? This cannot be undone. Type 'confirm' to proceed.", ephemeral=True)
+
+    try:
+        await bot.wait_for('message', timeout=30.0, check=check)
+    except asyncio.TimeoutError:
+        await ctx.send("Reset cancelled.", ephemeral=True)
+        return
+    
+    global time_data
+    time_data = {}
+    save_data(time_data)
+    await ctx.send("All time data has been reset.")
+
+if name == "main":
+    
+    bot.run('Your_bot_token_here')
